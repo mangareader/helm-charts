@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Values.project }}{{ if eq (.Values.ENVIRONMENT) "staging"}}-dev{{end}}
+  name: {{ .Values.project }}-{{ .Values.APP_NAME }}
+  labels:
+    app: {{ .Values.project }}-svc-{{ .Values.APP_NAME }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+      protocol: TCP
+      name: http-{{ .Values.service.port }}
+{{- if (.Values.service.port2) }}
+    - name: http-{{ .Values.service.port2 }}
+      protocol: TCP
+      port: {{ .Values.service.port2 }}
+      targetPort: {{ .Values.service.port2 }}
+{{- end}}
+  selector:
+    app: {{ .Values.project }}-{{ .Values.APP_NAME }}

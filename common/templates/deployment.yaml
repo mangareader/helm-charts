@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: {{ .Values.project }}{{ if eq (.Values.ENVIRONMENT) "staging"}}-dev{{end}}
+  name: {{ .Values.project }}-{{ .Values.APP_NAME }}
+  labels:
+    app: {{ .Values.project }}-{{ .Values.APP_NAME }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.project }}-{{ .Values.APP_NAME }}
+  strategy:
+    {{- toYaml .Values.strategy | nindent 3 }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.project }}-{{ .Values.APP_NAME }}
+    spec:
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+{{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+{{- end }}
+      containers:
+      - name: {{ .Values.project }}-{{ .Values.APP_NAME }}
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{- if (.Values.service.livenessProbe) }}
+        livenessProbe:
+          initialDelaySeconds: 10
+          timeoutSeconds: 10
+          periodSeconds: 2
+          httpGet:
+             path: {{ .Values.service.livenessProbe }}
+             port: {{ .Values.service.port }}
+        {{- end}}
+        {{- if (.Values.service.readinessProbe) }}
+        readinessProbe:
+          initialDelaySeconds: 10
+          timeoutSeconds: 10
+          periodSeconds: 2
+          httpGet:
+             path: {{ .Values.service.readinessProbe }}
+             port: {{ .Values.service.port }}
+        {{- end }}
+        resources:
+          requests:
+            memory: {{.Values.resources.requests.memory | quote }}
+            cpu: {{.Values.resources.requests.cpu | quote }}
+          limits:
+            memory: {{.Values.resources.limits.memory | quote }}
+            cpu: {{.Values.resources.limits.cpu | quote }}
+        {{- if .Values.security }}
+        securityContext:
+          runAsUser: 8888
+        {{- end }}
+        env:
+        {{- if .Values.security }}
+        - name: NODE_ENV
+          value: {{.Values.ENVIRONMENT | quote }}
+        {{- end }}
+        - name: BUILD_VERSION
+          value: {{ .Values.CI_JOB_ID | quote }}
+        volumeMounts:
+        {{- if (.Values.mountPath) }}
+        - name: secrets
+          mountPath: {{ .Values.mountPath }}
+          readOnly: true
+        {{- end }}
+        - name: tz-config
+          mountPath: /etc/localtime
+      volumes:
+      {{- if (.Values.mountPath) }}
+      - name: secrets
+        secret:
+          secretName: {{ .Values.project }}-{{ .Values.APP_NAME }}-secret-appsettings
+      {{- end }}
+      - name: tz-config
+        hostPath:
+           path: /usr/share/zoneinfo/{{ .Values.timezone }}
+      imagePullSecrets:
+        - name: {{ .Values.project }}-{{ .Values.APP_NAME }}-dockerlogin
