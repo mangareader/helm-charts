@@ -40,5 +40,7 @@ tolerations: []
 
 affinity: {}
 
-envFrom: {}
+envFrom:
+- secretRef:
+    name: mka-api-secret-appsettings
 

@@ -21,10 +21,6 @@ spec:
       nodeSelector:
 {{ toYaml . | indent 8 }}
     {{- end }}
-{{- with .Values.envFrom }}
-      envFrom:
-{{ toYaml . | indent 8 }}
-{{- end }}
 {{- with .Values.affinity }}
       affinity:
 {{ toYaml . | indent 8 }}
@@ -33,6 +29,10 @@ spec:
       - name: {{ .Values.project }}-{{ .Values.APP_NAME }}
         image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{- with .Values.envFrom }}
+        envFrom:
+{{ toYaml . | indent 8 }}
+        {{- end }}
         {{- if (.Values.service.livenessProbe) }}
         livenessProbe:
           initialDelaySeconds: 10
